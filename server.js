@@ -9,8 +9,7 @@ const io = new Server(server);
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// --- CONFIGURATION KKIAPAY ---
-const KKIAPAY_PRIVATE_KEY = 'tpk_79ba7f3002a911f19f19c5c8b76e4490'; 
+const KKIAPAY_PRIVATE_KEY = 'pk_cdcea52e7f28e5e44cb8c7faaebff4233dfa7dae4e51b14dd37c04449da404fe'; 
 
 let db = { groupes: {}, inventaire: {} };
 if (fs.existsSync('database.json')) db = JSON.parse(fs.readFileSync('database.json'));
@@ -44,7 +43,7 @@ io.on('connection', (socket) => {
 
     socket.on('join_group', (data) => {
         const { nom, mdp, maxUsers, estCreation, userUID } = data;
-        socket.userUID = userUID; // On stocke l'UID dans la session socket
+        socket.userUID = userUID; 
         const inv = db.inventaire[userUID] || { groupesSupp: 0, usersSupp: 0 };
         
         if (estCreation) {
@@ -66,15 +65,31 @@ io.on('connection', (socket) => {
         const g = db.groupes[nom];
         if (!g || g.motDePasse !== mdp) return socket.emit('erreur', "Accès refusé ou code faux.");
 
+        // --- CORRECTION : VÉRIFICATION DE LA LIMITE ---
+        const nbActuel = Object.keys(g.membres).length;
+        if (!g.membres[userUID] && nbActuel >= g.limiteUsers) {
+            return socket.emit('erreur', "Ce salon est complet (" + g.limiteUsers + " max).");
+        }
+
         socket.join(nom);
         socket.nomGroupe = nom;
         if (!g.membres[userUID]) {
             g.dernierNumero++;
             g.membres[userUID] = g.dernierNumero;
             sauvegarder();
+            diffuserSalons(); // Update la liste pour les autres
         }
         socket.pseudo = "Membre #" + (g.membres[userUID] < 10 ? "0"+g.membres[userUID] : g.membres[userUID]);
-        socket.emit('bienvenue', { nom, historique: g.messages, monPseudo: socket.pseudo, owner: g.ownerUID });
+        
+        // On envoie le nombre de membres actuel
+        socket.emit('bienvenue', { 
+            nom, 
+            historique: g.messages, 
+            monPseudo: socket.pseudo, 
+            owner: g.ownerUID,
+            nbMembres: Object.keys(g.membres).length,
+            max: g.limiteUsers
+        });
     });
 
     socket.on('supprimer_salon', (nom) => {
