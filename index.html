@@ -20,7 +20,7 @@
         #shop-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; align-items: center; justify-content: center; }
         .shop-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #444; }
         #chat-screen { display: none; flex-direction: column; height: 100vh; position: fixed; top: 0; width: 100%; z-index: 1000; }
-        #msg-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        #msg-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px; }
         .msg { padding: 12px 16px; border-radius: 20px; max-width: 75%; }
         .msg-me { align-self: flex-end; background: var(--primary); border-bottom-right-radius: 4px; }
         .msg-them { align-self: flex-start; background: rgba(255,255,255,0.1); border-bottom-left-radius: 4px; }
@@ -28,6 +28,17 @@
         .dropdown-content { display: none; position: absolute; right: 0; background: #1e293b; min-width: 140px; border-radius: 8px; z-index: 100; border: 1px solid #444; }
         .dropdown-content button { color: #ff4444; padding: 12px; background: none; border: none; width: 100%; text-align: left; cursor: pointer; font-weight: bold; }
         .dropdown:hover .dropdown-content { display: block; }
+        
+        /* ICI L'AJUSTEMENT POUR MONTER LA BARRE */
+        .input-bar-area { 
+            padding: 15px; 
+            padding-bottom: 35px; /* On remonte la barre de 35px du bord bas */
+            display: flex; 
+            gap: 10px; 
+            background: rgba(15, 23, 42, 0.95); 
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
     </style>
 </head>
 <body>
@@ -39,16 +50,11 @@
 
 <div id="auth-ui" class="container">
     <input type="text" id="search-bar" placeholder="🔍 Rechercher un salon..." onkeyup="filtrerSalons()">
-
     <div class="tabs" style="display:flex; background:rgba(0,0,0,0.2); padding:5px; border-radius:15px; margin-bottom:20px;">
         <button id="tab-rejoindre" class="tab-btn active" onclick="switchMode('rejoindre')">Rejoindre</button>
         <button id="tab-creer" class="tab-btn" onclick="switchMode('creer')">Créer</button>
     </div>
-
-    <div id="section-rejoindre">
-        <div id="liste-salons"></div>
-    </div>
-
+    <div id="section-rejoindre"><div id="liste-salons"></div></div>
     <div id="section-creer" style="display:none;" class="card">
         <h3>Nouveau Salon</h3>
         <input type="text" id="c-nom" placeholder="Nom du salon">
@@ -80,15 +86,13 @@
         <b id="titre-chat">Salon</b>
         <div id="admin-menu" class="dropdown" style="display:none;">
             <div style="cursor:pointer; padding:5px 10px; font-size:1.5rem;">⋮</div>
-            <div class="dropdown-content">
-                <button onclick="supprimerSalon()">🗑 Supprimer</button>
-            </div>
+            <div class="dropdown-content"><button onclick="supprimerSalon()">🗑 Supprimer</button></div>
         </div>
     </header>
     <div id="msg-box"></div>
-    <div style="padding:15px; display:flex; gap:10px; background: rgba(15, 23, 42, 0.9);">
+    <div class="input-bar-area">
         <input type="text" id="msg-input" placeholder="Message..." style="margin:0;">
-        <button class="btn" onclick="envoyer()" style="width:70px; padding:0;">✈️</button>
+        <button class="btn" onclick="envoyer()" style="width:70px; padding:0; height:54px;">✈️</button>
     </div>
 </div>
 
@@ -183,12 +187,12 @@
             amount: Math.round(prix * 655),
             position: "center",
             data: JSON.stringify({ uid: monUID, type, qte }),
-            key: "79b8f89002a911f19f19c5c8b76e4490", // <--- TA CLÉ PUBLIQUE ICI
+            key: "79b8f89002a911f19f19c5c8b76e4490", // <--- TA CLÉ ICI
             sandbox: true 
         });
     }
 
-    socket.on('salon_supprime', () => { alert("Ce salon a été fermé par son créateur."); location.reload(); });
+    socket.on('salon_supprime', () => { alert("Ce salon a été fermé."); location.reload(); });
     socket.on('erreur', alert);
     addKkiapayListener('success', () => { location.reload(); });
 </script>
