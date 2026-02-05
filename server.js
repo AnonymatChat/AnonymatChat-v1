@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const fs = require('fs');
+const webpush = require('web-push'); // Nouveau
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -9,7 +10,16 @@ const io = new Server(server);
 app.use(express.static(__dirname));
 app.use(express.json());
 
-const KKIAPAY_PRIVATE_KEY = 'pk_cdcea52e7f28e5e44cb8c7faaebff4233dfa7dae4e51b14dd37c04449da404fe'; 
+// --- CONFIGURATION NOTIFICATIONS ---
+// Clés de test (tu pourras les changer plus tard)
+const publicVapidKey = 'BJ6P6l-500HkO2Lp1vL6v1X9S1o-z8v-K0o-Z8v-K0o-Z8v-K0o-Z8v-K0o';
+const privateVapidKey = '866XpP_D65Wv5XJ_56v8H-pX899v_Xv85v8v'; 
+webpush.setVapidDetails('mailto:admin@anonchat.com', publicVapidKey, privateVapidKey);
+
+let subscriptions = {}; // Stocke les abonnements aux notifications (UID -> Sub)
+
+// --- CONFIGURATION KKIAPAY ---
+const KKIAPAY_PRIVATE_KEY='pk_cdcea52e7f28e5e44cb8c7faaebff4233dfa7dae4e51b14dd37c04449da404fe'; 
 
 let db = { groupes: {}, inventaire: {} };
 if (fs.existsSync('database.json')) db = JSON.parse(fs.readFileSync('database.json'));
@@ -41,6 +51,10 @@ app.post('/api/kkiapay-callback', (req, res) => {
 io.on('connection', (socket) => {
     diffuserSalons();
 
+    socket.on('subscribe_notifications', (sub) => {
+        if (socket.userUID) subscriptions[socket.userUID] = sub;
+    });
+
     socket.on('join_group', (data) => {
         const { nom, mdp, maxUsers, estCreation, userUID } = data;
         socket.userUID = userUID; 
@@ -65,7 +79,6 @@ io.on('connection', (socket) => {
         const g = db.groupes[nom];
         if (!g || g.motDePasse !== mdp) return socket.emit('erreur', "Accès refusé ou code faux.");
 
-        // --- CORRECTION : VÉRIFICATION DE LA LIMITE ---
         const nbActuel = Object.keys(g.membres).length;
         if (!g.membres[userUID] && nbActuel >= g.limiteUsers) {
             return socket.emit('erreur', "Ce salon est complet (" + g.limiteUsers + " max).");
@@ -77,11 +90,10 @@ io.on('connection', (socket) => {
             g.dernierNumero++;
             g.membres[userUID] = g.dernierNumero;
             sauvegarder();
-            diffuserSalons(); // Update la liste pour les autres
+            diffuserSalons();
         }
         socket.pseudo = "Membre #" + (g.membres[userUID] < 10 ? "0"+g.membres[userUID] : g.membres[userUID]);
         
-        // On envoie le nombre de membres actuel
         socket.emit('bienvenue', { 
             nom, 
             historique: g.messages, 
@@ -108,6 +120,18 @@ io.on('connection', (socket) => {
             g.messages.push(m);
             sauvegarder();
             io.to(socket.nomGroupe).emit('nouveau_message', m);
+
+            // Envoi des notifications aux autres
+            Object.keys(g.membres).forEach(uid => {
+                if (uid !== socket.userUID && subscriptions[uid]) {
+                    const payload = JSON.stringify({
+                        title: `Message dans ${socket.nomGroupe}`,
+                        body: `${socket.pseudo}: ${txt}`,
+                        url: '/'
+                    });
+                    webpush.sendNotification(subscriptions[uid], payload).catch(() => {});
+                }
+            });
         }
     });
 });
