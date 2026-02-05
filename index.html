@@ -6,115 +6,87 @@
     <title>AnonChat Pro</title>
     <script src="https://cdn.kkiapay.me/k.js"></script>
     <style>
-        :root { --bg: #0b0e11; --card: #1c2127; --primary: #007aff; --accent: #ffd700; --text: #ffffff; --success: #28a745; }
+        :root { --primary: #6366f1; --accent: #ffd700; --bg: #0f172a; --card: rgba(30, 41, 59, 0.7); }
         
         body { 
-            background: var(--bg); color: var(--text); 
-            font-family: -apple-system, sans-serif; margin: 0; 
-            display: flex; flex-direction: column; min-height: 100vh; 
+            margin: 0; font-family: 'Segoe UI', sans-serif; color: white;
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a); /* Fond du menu */
+            background-attachment: fixed;
         }
 
-        header { 
-            display: flex; justify-content: space-between; align-items: center; 
-            padding: 15px 20px; background: var(--card); border-bottom: 1px solid #333; 
-            position: sticky; top: 0; z-index: 10;
+        .chat-bg {
+            background: url('https://www.transparenttextures.com/patterns/cubes.png'), linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
         }
 
-        .container { padding: 20px; width: 100%; box-sizing: border-box; flex: 1; }
-        .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-
-        /* Onglets Bascule */
-        .tabs { display: flex; background: #2c313c; border-radius: 12px; margin-bottom: 20px; padding: 5px; }
-        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; background: none; color: #888; font-weight: bold; font-size: 1rem; cursor: pointer; }
-        .tab-btn.active { background: var(--primary); color: white; }
-
-        input, select { 
-            width: 100%; padding: 16px; margin: 10px 0; border-radius: 12px; 
-            border: 1px solid #444; background: #2c313c; color: white; font-size: 1.1rem; box-sizing: border-box; 
-        }
-
-        .btn { 
-            background: var(--primary); color: white; border: none; padding: 18px; 
-            width: 100%; border-radius: 12px; font-size: 1.2rem; font-weight: bold; cursor: pointer; 
-        }
-
-        /* Boutique Modal */
-        #shop-modal { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; 
-        }
-        .shop-item { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #444; }
-        .buy-now { background: var(--success); color: black; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; }
-
-        /* Chat Screen */
-        #chat-screen { display: none; flex-direction: column; height: 100vh; position: fixed; top: 0; width: 100%; background: var(--bg); z-index: 20; }
-        #msg-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #000; }
+        header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); }
+        .container { padding: 20px; max-width: 500px; margin: auto; }
+        .card { background: var(--card); backdrop-filter: blur(15px); padding: 20px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
         
-        .msg { padding: 12px 16px; border-radius: 18px; max-width: 80%; word-wrap: break-word; font-size: 1rem; line-height: 1.4; }
-        .msg-me { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 4px; }
-        .msg-them { align-self: flex-start; background: #333; color: white; border-bottom-left-radius: 4px; }
-        .msg-info { font-size: 0.7rem; color: #aaa; margin-bottom: 4px; display: block; }
+        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 12px; background: none; color: #94a3b8; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
 
-        .chat-input-area { padding: 15px; background: var(--card); display: flex; gap: 10px; border-top: 1px solid #333; }
+        input { width: 100%; padding: 16px; margin: 10px 0; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(15, 23, 42, 0.6); color: white; font-size: 1rem; box-sizing: border-box; }
+        .btn { background: var(--primary); color: white; border: none; padding: 16px; width: 100%; border-radius: 14px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
+
+        /* Liste des salons */
+        .salon-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
+        
+        /* Menu 3 points */
+        .menu-dots { cursor: pointer; padding: 5px 10px; font-size: 1.2rem; }
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-content { display: none; position: absolute; right: 0; background: #1e293b; min-width: 120px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); border-radius: 8px; z-index: 100; }
+        .dropdown-content button { color: #ff4444; padding: 12px; text-decoration: none; display: block; background: none; border: none; width: 100%; text-align: left; cursor: pointer; }
+        .dropdown:hover .dropdown-content { display: block; }
+
+        /* Chat */
+        #chat-screen { display: none; flex-direction: column; height: 100vh; position: fixed; top: 0; width: 100%; z-index: 1000; }
+        #msg-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .msg { padding: 12px 16px; border-radius: 20px; max-width: 75%; position: relative; }
+        .msg-me { align-self: flex-end; background: var(--primary); border-bottom-right-radius: 4px; }
+        .msg-them { align-self: flex-start; background: rgba(255,255,255,0.1); border-bottom-left-radius: 4px; }
     </style>
 </head>
 <body>
 
 <header id="main-header">
-    <h1 style="font-size: 1.5rem; margin: 0;">🕵️‍♂️ AnonChat</h1>
-    <button style="background:var(--accent); border:none; padding:10px 15px; border-radius:10px; font-weight:bold;" onclick="toggleShop(true)">🛒 Boutique</button>
+    <h2 style="margin:0;">🕵️‍♂️ Anon</h2>
+    <button style="background:var(--accent); border:none; padding:10px 15px; border-radius:12px; font-weight:bold;" onclick="toggleShop(true)">🛒</button>
 </header>
 
 <div id="auth-ui" class="container">
-    <input type="text" id="search-bar" placeholder="🔍 Rechercher un salon..." style="margin-bottom: 20px;">
-    
-    <div class="tabs">
+    <div class="tabs" style="display:flex; background:rgba(0,0,0,0.2); padding:5px; border-radius:15px; margin-bottom:20px;">
         <button id="tab-rejoindre" class="tab-btn active" onclick="switchMode('rejoindre')">Rejoindre</button>
         <button id="tab-creer" class="tab-btn" onclick="switchMode('creer')">Créer</button>
     </div>
 
-    <div id="section-rejoindre" class="card">
-        <h3>Entrer dans un salon</h3>
-        <input type="text" id="r-nom" placeholder="Nom du salon">
-        <input type="password" id="r-mdp" placeholder="Code secret">
-        <button class="btn" onclick="rejoindre()">REJOINDRE</button>
+    <div id="section-rejoindre">
+        <div id="liste-salons"></div>
     </div>
 
-    <div id="section-creer" class="card" style="display:none;">
-        <h3>Nouveau salon</h3>
+    <div id="section-creer" style="display:none;" class="card">
+        <h3>Nouveau Salon</h3>
         <input type="text" id="c-nom" placeholder="Nom du salon">
         <input type="password" id="c-mdp" placeholder="Code secret">
-        <label style="font-size: 0.9rem; color: #888;">Membres (2 à 10 gratuit) :</label>
         <input type="number" id="c-max" value="10" min="2" max="100">
-        <button class="btn" style="background: var(--success);" onclick="creer()">CRÉER LE SALON</button>
+        <button class="btn" onclick="creer()">CRÉER MAINTENANT</button>
     </div>
 </div>
 
-<div id="shop-modal">
-    <div class="card" style="width: 90%; max-width: 400px;">
-        <h2 style="text-align:center; color:var(--accent);">💎 Boutique Pro</h2>
-        <div class="shop-item">
-            <div>🏠 <b>+1 Salon</b><br><small style="color:#888">Permanent</small></div>
-            <button class="buy-now" onclick="lancerPaiement(0.49, 'groupe', 1)">325 F</button>
-        </div>
-        <div class="shop-item">
-            <div>👥 <b>+50 Places</b><br><small style="color:#888">Capacité boostée</small></div>
-            <button class="buy-now" onclick="lancerPaiement(0.99, 'user', 50)">650 F</button>
-        </div>
-        <button class="btn" style="margin-top:20px; background:#555;" onclick="toggleShop(false)">RETOUR</button>
-    </div>
-</div>
-
-<div id="chat-screen">
-    <header style="padding: 10px 20px; display: flex; align-items: center; justify-content: space-between;">
-        <button onclick="location.reload()" style="background:#444; color:white; border:none; padding:8px 12px; border-radius:8px;">⬅ Quitter</button>
+<div id="chat-screen" class="chat-bg">
+    <header>
+        <button onclick="location.reload()" style="background:none; border:none; color:white; font-size:1.5rem;">✕</button>
         <b id="titre-chat">Salon</b>
-        <div style="width:60px;"></div>
+        <div id="admin-menu" class="dropdown" style="display:none;">
+            <div class="menu-dots">⋮</div>
+            <div class="dropdown-content">
+                <button onclick="supprimerSalon()">Supprimer Salon</button>
+            </div>
+        </div>
     </header>
     <div id="msg-box"></div>
-    <div class="chat-input-area">
-        <input type="text" id="msg-input" placeholder="Ton message..." style="margin:0;">
-        <button class="btn" onclick="envoyer()" style="width:70px; padding:0; height:54px;">✈️</button>
+    <div style="padding:15px; display:flex; gap:10px; background: rgba(15, 23, 42, 0.9);">
+        <input type="text" id="msg-input" placeholder="Message..." style="margin:0;">
+        <button class="btn" onclick="envoyer()" style="width:70px; padding:0;">✈️</button>
     </div>
 </div>
 
@@ -123,7 +95,7 @@
     const socket = io();
     let monUID = localStorage.getItem('uid') || 'u-' + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('uid', monUID);
-    let monPseudoGlobal = "";
+    let currentSalon = "";
 
     function switchMode(mode) {
         document.getElementById('section-rejoindre').style.display = (mode === 'rejoindre') ? 'block' : 'none';
@@ -132,80 +104,68 @@
         document.getElementById('tab-creer').classList.toggle('active', mode === 'creer');
     }
 
-    function toggleShop(s) { document.getElementById('shop-modal').style.display = s ? 'flex' : 'none'; }
-
-    function envoyer() {
-        const input = document.getElementById('msg-input');
-        const txt = input.value.trim();
-        if(txt !== "") {
-            socket.emit('envoi_message', txt);
-            input.value = "";
-        }
-    }
-
-    socket.on('nouveau_message', (m) => {
-        const box = document.getElementById('msg-box');
-        const isMe = m.auteur === monPseudoGlobal;
-        const div = document.createElement('div');
-        div.className = `msg ${isMe ? 'msg-me' : 'msg-them'}`;
-        div.innerHTML = `<span class="msg-info">${m.auteur}</span>${m.texte}`;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+    socket.on('liste_salons', (salons) => {
+        const container = document.getElementById('liste-salons');
+        container.innerHTML = "<h4>Salons Actifs</h4>";
+        salons.forEach(s => {
+            container.innerHTML += `
+                <div class="salon-item">
+                    <div><b>${s.nom}</b><br><small>${s.membres}/${s.max} membres</small></div>
+                    <button class="btn" style="width:auto; padding:8px 15px;" onclick="ouvrirPrompt('${s.nom}')">Entrer</button>
+                </div>`;
+        });
     });
 
-    function rejoindre() {
-        const nom = document.getElementById('r-nom').value;
-        const mdp = document.getElementById('r-mdp').value;
-        if(!nom || !mdp) return alert("Remplis tout !");
-        socket.emit('join_group', { nom, mdp, estCreation: false, userUID: monUID });
+    function ouvrirPrompt(nom) {
+        const mdp = prompt("Code secret pour " + nom + " :");
+        if(mdp) socket.emit('join_group', { nom, mdp, estCreation: false, userUID: monUID });
     }
 
     function creer() {
         const nom = document.getElementById('c-nom').value;
         const mdp = document.getElementById('c-mdp').value;
         const max = document.getElementById('c-max').value;
-        if(!nom || !mdp) return alert("Remplis tout !");
         socket.emit('join_group', { nom, mdp, maxUsers: max, estCreation: true, userUID: monUID });
     }
 
     socket.on('bienvenue', (data) => {
-        monPseudoGlobal = data.monPseudo;
+        currentSalon = data.nom;
         document.getElementById('auth-ui').style.display = 'none';
         document.getElementById('main-header').style.display = 'none';
         document.getElementById('chat-screen').style.display = 'flex';
         document.getElementById('titre-chat').innerText = data.nom;
+        if(data.owner === monUID) document.getElementById('admin-menu').style.display = "block";
         
-        // Charger l'historique
         const box = document.getElementById('msg-box');
         box.innerHTML = "";
-        data.historique.forEach(m => {
-            const isMe = m.auteur === monPseudoGlobal;
-            const div = document.createElement('div');
-            div.className = `msg ${isMe ? 'msg-me' : 'msg-them'}`;
-            div.innerHTML = `<span class="msg-info">${m.auteur}</span>${m.texte}`;
-            box.appendChild(div);
-        });
-        box.scrollTop = box.scrollHeight;
+        data.historique.forEach(m => ajouterMsg(m));
     });
 
-    function lancerPaiement(prix, type, qte) {
-        toggleShop(false);
-        openKkiapayWidget({
-            amount: Math.round(prix * 655),
-            position: "center",
-            data: JSON.stringify({ uid: monUID, type, qte }),
-            key: "79b8f89002a911f19f19c5c8b76e4490", // <--- TA CLÉ ICI
-            sandbox: true 
-        });
+    function envoyer() {
+        const input = document.getElementById('msg-input');
+        if(input.value.trim()) { socket.emit('envoi_message', input.value); input.value = ""; }
     }
 
-    addKkiapayListener('success', () => { location.reload(); });
-    socket.on('erreur', alert);
+    socket.on('nouveau_message', m => ajouterMsg(m));
 
-    // Permettre d'envoyer avec la touche "Entrée"
-    document.getElementById('msg-input').addEventListener('keypress', (e) => {
-        if(e.key === 'Enter') envoyer();
-    });
+    function ajouterMsg(m) {
+        const box = document.getElementById('msg-box');
+        const div = document.createElement('div');
+        div.className = `msg ${m.auteur.includes('Membre') ? 'msg-them' : 'msg-me'}`; // Simple check
+        div.innerHTML = `<small style="display:block; font-size:0.7rem; opacity:0.6;">${m.auteur}</small>${m.texte}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function supprimerSalon() {
+        if(confirm("Supprimer définitivement ce salon ?")) {
+            socket.emit('supprimer_salon', currentSalon);
+            location.reload();
+        }
+    }
+
+    socket.on('salon_supprime', () => { alert("Ce salon a été fermé."); location.reload(); });
+    socket.on('erreur', alert);
 </script>
 </body>
 </html>
