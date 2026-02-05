@@ -1,14 +1,14 @@
 {
-  "name": "anonchat-senegal",
+  "name": "AnonymatChat",
   "version": "1.0.0",
-  "description": "Application de chat anonyme avec paiement Kkiapay",
+  "description": "Chat anonyme avec notifications",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.7.2",
-     "web-push": "^3.6.6"
+    "web-push": "^3.6.6"
+  },
+  "scripts": {
+    "start": "node server.js"
   }
 }
