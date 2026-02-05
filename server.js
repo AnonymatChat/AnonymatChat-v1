@@ -9,12 +9,14 @@ const io = new Server(server);
 app.use(express.static(__dirname));
 app.use(express.json());
 
+// --- CONFIGURATION KKIAPAY ---
+const KKIAPAY_PRIVATE_KEY = 'tpk_79ba7f3002a911f19f19c5c8b76e4490'; 
+
 let db = { groupes: {}, inventaire: {} };
 if (fs.existsSync('database.json')) db = JSON.parse(fs.readFileSync('database.json'));
 
 function sauvegarder() { fs.writeFileSync('database.json', JSON.stringify(db, null, 2)); }
 
-// Envoie la liste des salons à tout le monde
 function diffuserSalons() {
     const liste = Object.keys(db.groupes).map(nom => ({
         nom: nom,
@@ -25,11 +27,24 @@ function diffuserSalons() {
     io.emit('liste_salons', liste);
 }
 
+app.post('/api/kkiapay-callback', (req, res) => {
+    try {
+        const info = JSON.parse(req.body.data); 
+        const uid = info.uid;
+        if (!db.inventaire[uid]) db.inventaire[uid] = { groupesSupp: 0, usersSupp: 0 };
+        if (info.type === "groupe") db.inventaire[uid].groupesSupp += parseInt(info.qte);
+        else if (info.type === "user") db.inventaire[uid].usersSupp += parseInt(info.qte);
+        sauvegarder();
+        res.json({ status: "success" });
+    } catch (e) { res.status(400).send("Erreur"); }
+});
+
 io.on('connection', (socket) => {
     diffuserSalons();
 
     socket.on('join_group', (data) => {
         const { nom, mdp, maxUsers, estCreation, userUID } = data;
+        socket.userUID = userUID; // On stocke l'UID dans la session socket
         const inv = db.inventaire[userUID] || { groupesSupp: 0, usersSupp: 0 };
         
         if (estCreation) {
@@ -49,7 +64,7 @@ io.on('connection', (socket) => {
         }
 
         const g = db.groupes[nom];
-        if (!g || g.motDePasse !== mdp) return socket.emit('erreur', "Accès refusé.");
+        if (!g || g.motDePasse !== mdp) return socket.emit('erreur', "Accès refusé ou code faux.");
 
         socket.join(nom);
         socket.nomGroupe = nom;
@@ -58,7 +73,7 @@ io.on('connection', (socket) => {
             g.membres[userUID] = g.dernierNumero;
             sauvegarder();
         }
-        socket.pseudo = "Membre #" + g.membres[userUID];
+        socket.pseudo = "Membre #" + (g.membres[userUID] < 10 ? "0"+g.membres[userUID] : g.membres[userUID]);
         socket.emit('bienvenue', { nom, historique: g.messages, monPseudo: socket.pseudo, owner: g.ownerUID });
     });
 
@@ -82,4 +97,5 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`🚀 Port ${PORT}`));
