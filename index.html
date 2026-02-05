@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AnonymatChat</title>
+    <title>AnonChat Pro</title>
     <script src="https://cdn.kkiapay.me/k.js"></script>
     <style>
         :root { --primary: #6366f1; --accent: #ffd700; --bg: #0f172a; --card: rgba(30, 41, 59, 0.7); }
@@ -28,13 +28,24 @@
         .dropdown-content { display: none; position: absolute; right: 0; background: #1e293b; min-width: 140px; border-radius: 8px; z-index: 100; border: 1px solid #444; }
         .dropdown-content button { color: #ff4444; padding: 12px; background: none; border: none; width: 100%; text-align: left; cursor: pointer; font-weight: bold; }
         .dropdown:hover .dropdown-content { display: block; }
-        .input-bar-area { padding: 15px; padding-bottom: 35px; display: flex; gap: 10px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.1); }
+        
+        /* CORRECTION BARRE BASSE */
+        .input-bar-area { 
+            padding: 15px; 
+            /* On force une grosse marge en bas pour dépasser les boutons Android */
+            padding-bottom: max(60px, env(safe-area-inset-bottom)); 
+            display: flex; 
+            gap: 10px; 
+            background: rgba(15, 23, 42, 0.95); 
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
     </style>
 </head>
 <body>
 
 <header id="main-header">
-    <h2 style="margin:0;">AnonymatChat</h2>
+    <h2 style="margin:0;">🕵️‍♂️ Anon</h2>
     <button style="background:var(--accent); border:none; padding:10px 15px; border-radius:12px; font-weight:bold; cursor:pointer;" onclick="toggleShop(true)">🛒 Boutique</button>
 </header>
 
@@ -79,7 +90,7 @@
         </div>
         <div id="admin-menu" class="dropdown" style="display:none;">
             <div style="cursor:pointer; padding:5px 10px; font-size:1.5rem;">⋮</div>
-            <div class="dropdown-content"><button onclick="supprimerSalon()">⛔️Supprimer</button></div>
+            <div class="dropdown-content"><button onclick="supprimerSalon()">🗑 Supprimer</button></div>
         </div>
     </header>
     <div id="msg-box"></div>
@@ -96,6 +107,9 @@
     localStorage.setItem('uid', monUID);
     let currentSalon = "";
     let monPseudoGlobal = "";
+
+    // Même clé publique que le serveur
+    const vapidPublic = 'BDrVaK8bCj6yJvQ8q6rL9zK7mN3pT5wR2xF4hG1jS0v'; 
 
     function switchMode(mode) {
         document.getElementById('section-rejoindre').style.display = (mode === 'rejoindre') ? 'block' : 'none';
@@ -189,7 +203,7 @@
             amount: Math.round(prix * 655),
             position: "center",
             data: JSON.stringify({ uid: monUID, type, qte }),
-            key: "3dfd92d0b00c616826506166809c7c475946e015",
+            key: "TA_PUBLIC_KEY",
             sandbox: true 
         });
     }
@@ -199,8 +213,6 @@
     addKkiapayListener('success', () => { location.reload(); });
 
     // --- LOGIQUE NOTIFICATIONS ---
-    const vapidPublic = 'BJ6P6l-500HkO2Lp1vL6v1X9S1o-z8v-K0o-Z8v-K0o-Z8v-K0o-Z8v-K0o';
-
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js').then(reg => {
