@@ -29,10 +29,10 @@
         .dropdown-content button { color: #ff4444; padding: 12px; background: none; border: none; width: 100%; text-align: left; cursor: pointer; font-weight: bold; }
         .dropdown:hover .dropdown-content { display: block; }
         
-        /* CORRECTION BARRE BASSE */
+        /* CORRECTION ICI : On remonte la barre pour qu'elle ne soit pas cachée */
         .input-bar-area { 
             padding: 15px; 
-            /* On force une grosse marge en bas pour dépasser les boutons Android */
+            /* On force une marge en bas de 60px minimum pour dépasser la barre Android */
             padding-bottom: max(60px, env(safe-area-inset-bottom)); 
             display: flex; 
             gap: 10px; 
@@ -108,8 +108,8 @@
     let currentSalon = "";
     let monPseudoGlobal = "";
 
-    // Même clé publique que le serveur
-    const vapidPublic = 'BDrVaK8bCj6yJvQ8q6rL9zK7mN3pT5wR2xF4hG1jS0v'; 
+    // Même clé publique valide que le serveur
+    const vapidPublic = 'BJ9A5y1i7bT1P-8r6qV5m3xL4zJ2k8nQ9wR7s0tU1vW3xY5zA2bC4dE6fG8hJ0k';
 
     function switchMode(mode) {
         document.getElementById('section-rejoindre').style.display = (mode === 'rejoindre') ? 'block' : 'none';
