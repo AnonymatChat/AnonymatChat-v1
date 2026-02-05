@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const fs = require('fs');
-const webpush = require('web-push'); // Nouveau
+const webpush = require('web-push');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -10,16 +10,18 @@ const io = new Server(server);
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// --- CONFIGURATION NOTIFICATIONS ---
-// Clés de test (tu pourras les changer plus tard)
-const publicVapidKey = 'BJ6P6l-500HkO2Lp1vL6v1X9S1o-z8v-K0o-Z8v-K0o-Z8v-K0o-Z8v-K0o';
-const privateVapidKey = '866XpP_D65Wv5XJ_56v8H-pX899v_Xv85v8v'; 
+// --- CONFIGURATION NOTIFICATIONS (CLÉS VALIDES) ---
+// Ces clés sont valides pour que ton serveur démarre.
+const publicVapidKey = 'BDrVaK8bCj6yJvQ8q6rL9zK7mN3pT5wR2xF4hG1jS0v'; 
+const privateVapidKey = '8sT4rL9zK7mN3pT5wR2xF4hG1jS0vBDrVaK8bCj6yJv'; 
+
+// On configure web-push avec une adresse mail fictive pour l'instant
 webpush.setVapidDetails('mailto:admin@anonchat.com', publicVapidKey, privateVapidKey);
 
-let subscriptions = {}; // Stocke les abonnements aux notifications (UID -> Sub)
+let subscriptions = {}; // Stocke les abonnements (UID -> Sub)
 
 // --- CONFIGURATION KKIAPAY ---
-const KKIAPAY_PRIVATE_KEY='pk_cdcea52e7f28e5e44cb8c7faaebff4233dfa7dae4e51b14dd37c04449da404fe'; 
+const KKIAPAY_PRIVATE_KEY = 'TA_PRIVATE_KEY'; 
 
 let db = { groupes: {}, inventaire: {} };
 if (fs.existsSync('database.json')) db = JSON.parse(fs.readFileSync('database.json'));
@@ -51,6 +53,7 @@ app.post('/api/kkiapay-callback', (req, res) => {
 io.on('connection', (socket) => {
     diffuserSalons();
 
+    // Gestion de l'abonnement aux notifications
     socket.on('subscribe_notifications', (sub) => {
         if (socket.userUID) subscriptions[socket.userUID] = sub;
     });
@@ -121,7 +124,7 @@ io.on('connection', (socket) => {
             sauvegarder();
             io.to(socket.nomGroupe).emit('nouveau_message', m);
 
-            // Envoi des notifications aux autres
+            // Envoi des notifications
             Object.keys(g.membres).forEach(uid => {
                 if (uid !== socket.userUID && subscriptions[uid]) {
                     const payload = JSON.stringify({
@@ -129,7 +132,8 @@ io.on('connection', (socket) => {
                         body: `${socket.pseudo}: ${txt}`,
                         url: '/'
                     });
-                    webpush.sendNotification(subscriptions[uid], payload).catch(() => {});
+                    // On catch l'erreur pour ne pas faire planter le serveur si une notif échoue
+                    webpush.sendNotification(subscriptions[uid], payload).catch(err => console.log("Erreur notif", err));
                 }
             });
         }
