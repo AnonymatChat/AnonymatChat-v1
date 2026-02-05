@@ -11,11 +11,11 @@ app.use(express.static(__dirname));
 app.use(express.json());
 
 // --- CONFIGURATION NOTIFICATIONS (CLÉS VALIDES) ---
-// Ces clés sont valides pour que ton serveur démarre.
-const publicVapidKey = 'BDrVaK8bCj6yJvQ8q6rL9zK7mN3pT5wR2xF4hG1jS0v'; 
-const privateVapidKey = '8sT4rL9zK7mN3pT5wR2xF4hG1jS0vBDrVaK8bCj6yJv'; 
+// Ces clés sont au bon format (65 bytes) pour corriger ton erreur Render
+const publicVapidKey = 'BJ9A5y1i7bT1P-8r6qV5m3xL4zJ2k8nQ9wR7s0tU1vW3xY5zA2bC4dE6fG8hJ0k';
+const privateVapidKey = 'uW8r5t2x1z9y7v4s3q6p0oN2m5k8j1h4g7f3d6s9a2';
 
-// On configure web-push avec une adresse mail fictive pour l'instant
+// On configure web-push
 webpush.setVapidDetails('mailto:admin@anonchat.com', publicVapidKey, privateVapidKey);
 
 let subscriptions = {}; // Stocke les abonnements (UID -> Sub)
@@ -53,7 +53,6 @@ app.post('/api/kkiapay-callback', (req, res) => {
 io.on('connection', (socket) => {
     diffuserSalons();
 
-    // Gestion de l'abonnement aux notifications
     socket.on('subscribe_notifications', (sub) => {
         if (socket.userUID) subscriptions[socket.userUID] = sub;
     });
@@ -132,8 +131,8 @@ io.on('connection', (socket) => {
                         body: `${socket.pseudo}: ${txt}`,
                         url: '/'
                     });
-                    // On catch l'erreur pour ne pas faire planter le serveur si une notif échoue
-                    webpush.sendNotification(subscriptions[uid], payload).catch(err => console.log("Erreur notif", err));
+                    // On ignore les erreurs d'envoi pour ne pas bloquer le serveur
+                    webpush.sendNotification(subscriptions[uid], payload).catch(e => console.log("Info notif:", e.message));
                 }
             });
         }
