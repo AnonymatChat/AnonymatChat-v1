@@ -122,7 +122,6 @@
                     <div><b>${s.nom}</b><br><small style="opacity:0.5">${s.membres}/${s.max} membres</small></div>
                     <button class="btn" style="width:auto; padding:8px 15px; font-size:0.9rem;" onclick="ouvrirPrompt('${s.nom}')">Entrer</button>
                 </div>`;
-            // Mise à jour du compteur si on est déjà dans ce salon
             if(s.nom === currentSalon) {
                 document.getElementById('compteur-chat').innerText = `${s.membres}/${s.max} membres`;
             }
@@ -198,6 +197,33 @@
     socket.on('salon_supprime', () => { alert("Ce salon a été fermé."); location.reload(); });
     socket.on('erreur', alert);
     addKkiapayListener('success', () => { location.reload(); });
+
+    // --- LOGIQUE NOTIFICATIONS ---
+    const vapidPublic = 'BJ6P6l-500HkO2Lp1vL6v1X9S1o-z8v-K0o-Z8v-K0o-Z8v-K0o-Z8v-K0o';
+
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        reg.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: urlBase64ToUint8Array(vapidPublic)
+                        }).then(sub => {
+                            socket.emit('subscribe_notifications', sub);
+                        });
+                    }
+                });
+            });
+        });
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+    }
 </script>
 </body>
 </html>
