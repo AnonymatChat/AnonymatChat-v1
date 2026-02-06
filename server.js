@@ -2,23 +2,12 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const fs = require('fs');
-const webpush = require('web-push');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static(__dirname));
 app.use(express.json());
-
-// --- CONFIGURATION NOTIFICATIONS (CLÉS VALIDES) ---
-// Ces clés sont au bon format (65 bytes) pour corriger ton erreur Render
-const publicVapidKey = 'BJ9A5y1i7bT1P-8r6qV5m3xL4zJ2k8nQ9wR7s0tU1vW3xY5zA2bC4dE6fG8hJ0k';
-const privateVapidKey = 'uW8r5t2x1z9y7v4s3q6p0oN2m5k8j1h4g7f3d6s9a2';
-
-// On configure web-push
-webpush.setVapidDetails('mailto:admin@anonchat.com', publicVapidKey, privateVapidKey);
-
-let subscriptions = {}; // Stocke les abonnements (UID -> Sub)
 
 // --- CONFIGURATION KKIAPAY ---
 const KKIAPAY_PRIVATE_KEY = 'TA_PRIVATE_KEY'; 
@@ -33,7 +22,8 @@ function diffuserSalons() {
         nom: nom,
         owner: db.groupes[nom].ownerUID,
         membres: Object.keys(db.groupes[nom].membres).length,
-        max: db.groupes[nom].limiteUsers
+        max: db.groupes[nom].limiteUsers,
+        totalMessages: db.groupes[nom].messages.length // On envoie le total pour le calcul du badge
     }));
     io.emit('liste_salons', liste);
 }
@@ -52,10 +42,6 @@ app.post('/api/kkiapay-callback', (req, res) => {
 
 io.on('connection', (socket) => {
     diffuserSalons();
-
-    socket.on('subscribe_notifications', (sub) => {
-        if (socket.userUID) subscriptions[socket.userUID] = sub;
-    });
 
     socket.on('join_group', (data) => {
         const { nom, mdp, maxUsers, estCreation, userUID } = data;
@@ -83,7 +69,7 @@ io.on('connection', (socket) => {
 
         const nbActuel = Object.keys(g.membres).length;
         if (!g.membres[userUID] && nbActuel >= g.limiteUsers) {
-            return socket.emit('erreur', "Ce salon est complet (" + g.limiteUsers + " max).");
+            return socket.emit('erreur', "Ce salon est complet.");
         }
 
         socket.join(nom);
@@ -122,22 +108,10 @@ io.on('connection', (socket) => {
             g.messages.push(m);
             sauvegarder();
             io.to(socket.nomGroupe).emit('nouveau_message', m);
-
-            // Envoi des notifications
-            Object.keys(g.membres).forEach(uid => {
-                if (uid !== socket.userUID && subscriptions[uid]) {
-                    const payload = JSON.stringify({
-                        title: `Message dans ${socket.nomGroupe}`,
-                        body: `${socket.pseudo}: ${txt}`,
-                        url: '/'
-                    });
-                    // On ignore les erreurs d'envoi pour ne pas bloquer le serveur
-                    webpush.sendNotification(subscriptions[uid], payload).catch(e => console.log("Info notif:", e.message));
-                }
-            });
+            diffuserSalons(); // On met à jour la liste pour les pastilles
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Serveur actif sur port ${PORT}`));
