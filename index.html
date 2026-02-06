@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AnonymatChat</title>
-    <script src="https://cdn.kkiapay.me/k.js"></script>
+    <title>AnonChat Pro - PayPal</title>
+    <script src="https://www.paypal.com/sdk/js?client-id=AQGOfxfUa8EjnGe01WnolvW78AS9HTJFZgsugBEudbggkiBuNr5M1Xo2GJ5EVYwB-fNyGmad0asygMOA&currency=EUR"></script>
     <style>
         :root { --primary: #6366f1; --accent: #ffd700; --bg: #0f172a; --card: rgba(30, 41, 59, 0.7); }
         body { margin: 0; font-family: 'Segoe UI', sans-serif; color: white; background: radial-gradient(circle at top right, #1e1b4b, #0f172a); background-attachment: fixed; }
@@ -16,27 +16,27 @@
         .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
         input { width: 100%; padding: 16px; margin: 10px 0; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(15, 23, 42, 0.6); color: white; font-size: 1rem; box-sizing: border-box; }
         .btn { background: var(--primary); color: white; border: none; padding: 16px; width: 100%; border-radius: 14px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
-        .salon-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 15px; margin-bottom: 10px; position: relative; }
+        .salon-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 15px; margin-bottom: 10px; }
         .badge { background: #ff4757; color: white; font-size: 0.7rem; font-weight: bold; padding: 2px 8px; border-radius: 10px; margin-left: 8px; display: none; }
-        #shop-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; align-items: center; justify-content: center; }
-        .shop-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #444; }
+        #shop-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; align-items: center; justify-content: center; overflow-y: auto; }
+        .shop-content { background: var(--card); backdrop-filter: blur(15px); padding: 25px; border-radius: 24px; width: 90%; max-width: 400px; margin: 20px; }
+        .shop-section { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         #chat-screen { display: none; flex-direction: column; height: 100vh; position: fixed; top: 0; width: 100%; z-index: 1000; }
-        #msg-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px; }
-        .msg { padding: 12px 16px; border-radius: 20px; max-width: 75%; }
+        #msg-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .msg { padding: 12px 16px; border-radius: 20px; max-width: 75%; word-wrap: break-word; }
         .msg-me { align-self: flex-end; background: var(--primary); border-bottom-right-radius: 4px; }
         .msg-them { align-self: flex-start; background: rgba(255,255,255,0.1); border-bottom-left-radius: 4px; }
-        .dropdown { position: relative; display: inline-block; }
-        .dropdown-content { display: none; position: absolute; right: 0; background: #1e293b; min-width: 140px; border-radius: 8px; z-index: 100; border: 1px solid #444; }
-        .dropdown-content button { color: #ff4444; padding: 12px; background: none; border: none; width: 100%; text-align: left; cursor: pointer; font-weight: bold; }
-        .dropdown:hover .dropdown-content { display: block; }
-        .input-bar-area { padding: 15px; padding-bottom: max(60px, env(safe-area-inset-bottom)); display: flex; gap: 10px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.1); }
+        .input-bar-area { padding: 15px; padding-bottom: max(60px, env(safe-area-inset-bottom)); display: flex; gap: 10px; background: rgba(15, 23, 42, 0.95); }
     </style>
 </head>
 <body>
 
 <header id="main-header">
-    <h2 style="margin:0;">AnonymatChat</h2>
-    <button style="background:var(--accent); border:none; padding:10px 15px; border-radius:12px; font-weight:bold; cursor:pointer;" onclick="toggleShop(true)">🛒 Boutique</button>
+    <h2 style="margin:0;">🕵️‍♂️ Anon</h2>
+    <div style="text-align:right;">
+        <small id="pool-info" style="color:var(--accent); display:block; font-size:0.7rem;">Salons: 0 | Places: 0</small>
+        <button style="background:var(--accent); border:none; padding:8px 12px; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="toggleShop(true)">🛒 Boutique</button>
+    </div>
 </header>
 
 <div id="auth-ui" class="container">
@@ -47,41 +47,43 @@
     </div>
     <div id="section-rejoindre"><div id="liste-salons"></div></div>
     <div id="section-creer" style="display:none;" class="card">
-        <h3>Nouveau Salon</h3>
+        <h3>Créer un Salon</h3>
+        <p style="font-size:0.8rem; opacity:0.7;">Chaque création coûte 1 crédit Salon et les places choisies.</p>
         <input type="text" id="c-nom" placeholder="Nom du salon">
         <input type="password" id="c-mdp" placeholder="Code secret">
-        <label style="font-size:0.8rem; color:#888;">Max membres (2-10 gratuit) :</label>
-        <input type="number" id="c-max" value="10" min="2" max="100">
-        <button class="btn" onclick="creer()">CRÉER MAINTENANT</button>
+        <label id="label-max" style="font-size:0.8rem; color:#888;">Nombre de places : 10</label>
+        <input type="range" id="c-max" min="2" max="100" value="10" oninput="document.getElementById('label-max').innerText='Nombre de places : '+this.value">
+        <button class="btn" onclick="creer()">DÉPENSER MES CRÉDITS ET CRÉER</button>
     </div>
 </div>
 
 <div id="shop-modal">
-    <div class="card" style="width: 90%; max-width: 400px;">
-        <h2 style="text-align:center; color:var(--accent);">💎 Boutique Pro</h2>
-        <div class="shop-item">
-            <span>🏠 +1 Salon</span>
-            <button style="background:#4cd137; border:none; padding:10px; border-radius:8px; font-weight:bold;" onclick="lancerPaiement(0.49, 'groupe', 1)">325 F</button>
+    <div class="shop-content">
+        <h2 style="text-align:center; color:var(--accent); margin-top:0;">💎 Pack de Ressources</h2>
+        
+        <div class="shop-section">
+            <h4 style="margin:10px 0;">🏠 Salons supplémentaires</h4>
+            <div id="paypal-salon-1"></div><p style="text-align:center; font-size:0.8rem;">+1 salon (0.49€)</p>
+            <div id="paypal-salon-5"></div><p style="text-align:center; font-size:0.8rem;">+5 salons (1.99€)</p>
+            <div id="paypal-salon-10"></div><p style="text-align:center; font-size:0.8rem;">+10 salons (2.99€)</p>
         </div>
-        <div class="shop-item">
-            <span>👥 +50 Places</span>
-            <button style="background:#4cd137; border:none; padding:10px; border-radius:8px; font-weight:bold;" onclick="lancerPaiement(0.99, 'user', 50)">650 F</button>
+
+        <div class="shop-section">
+            <h4 style="margin:10px 0;">👥 Crédits d'utilisateurs</h4>
+            <div id="paypal-user-20"></div><p style="text-align:center; font-size:0.8rem;">+20 places (0.99€)</p>
+            <div id="paypal-user-50"></div><p style="text-align:center; font-size:0.8rem;">+50 places (4.99€)</p>
+            <div id="paypal-user-100"></div><p style="text-align:center; font-size:0.8rem;">+100 places (8.99€)</p>
         </div>
-        <button class="btn" style="margin-top:20px; background:#555;" onclick="toggleShop(false)">FERMER</button>
+
+        <button class="btn" style="background:#555;" onclick="toggleShop(false)">RETOUR AU CHAT</button>
     </div>
 </div>
 
 <div id="chat-screen" class="chat-bg">
     <header>
-        <button onclick="fermerChat()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">✕</button>
-        <div style="text-align:center;">
-            <b id="titre-chat">Salon</b><br>
-            <small id="compteur-chat" style="opacity:0.6; font-size:0.75rem;">0/0 membres</small>
-        </div>
-        <div id="admin-menu" class="dropdown" style="display:none;">
-            <div style="cursor:pointer; padding:5px 10px; font-size:1.5rem;">⋮</div>
-            <div class="dropdown-content"><button onclick="supprimerSalon()">🗑 Supprimer</button></div>
-        </div>
+        <button onclick="fermerChat()" style="background:none; border:none; color:white; font-size:1.5rem;">✕</button>
+        <div style="text-align:center;"><b id="titre-chat">Salon</b><br><small id="compteur-chat" style="opacity:0.6;">0/0 membres</small></div>
+        <div style="width:30px;"></div>
     </header>
     <div id="msg-box"></div>
     <div class="input-bar-area">
@@ -98,6 +100,12 @@
     let currentSalon = "";
     let monPseudoGlobal = "";
     let messagesVus = JSON.parse(localStorage.getItem('messages_vus') || '{}');
+
+    // Mise à jour des crédits
+    socket.emit('get_credits', monUID);
+    socket.on('update_credits', (inv) => {
+        document.getElementById('pool-info').innerText = `Salons: ${inv.salons} | Places: ${inv.users}`;
+    });
 
     function switchMode(mode) {
         document.getElementById('section-rejoindre').style.display = (mode === 'rejoindre') ? 'block' : 'none';
@@ -117,33 +125,23 @@
 
     socket.on('liste_salons', (salons) => {
         const container = document.getElementById('liste-salons');
-        container.innerHTML = "<h4 style='opacity:0.6'>Salons Disponibles</h4>";
+        container.innerHTML = "";
         salons.forEach(s => {
-            // LOGIQUE INTELLIGENTE : On ne crée le badge que si l'utilisateur a déjà visité le salon une fois
             let badgeHtml = "";
             if (messagesVus.hasOwnProperty(s.nom)) {
-                const nouveau = s.totalMessages - messagesVus[s.nom];
-                if (nouveau > 0 && currentSalon !== s.nom) {
-                    badgeHtml = `<span class="badge" style="display:inline-block">${nouveau}</span>`;
-                }
+                const n = s.totalMessages - messagesVus[s.nom];
+                if (n > 0 && currentSalon !== s.nom) badgeHtml = `<span class="badge" style="display:inline-block">${n}</span>`;
             }
-
             container.innerHTML += `
                 <div class="salon-item">
                     <div><b>${s.nom}</b>${badgeHtml}<br><small style="opacity:0.5">${s.membres}/${s.max} membres</small></div>
                     <button class="btn" style="width:auto; padding:8px 15px; font-size:0.9rem;" onclick="ouvrirPrompt('${s.nom}')">Entrer</button>
                 </div>`;
-            
-            if(s.nom === currentSalon) {
-                document.getElementById('compteur-chat').innerText = `${s.membres}/${s.max} membres`;
-                messagesVus[s.nom] = s.totalMessages;
-                localStorage.setItem('messages_vus', JSON.stringify(messagesVus));
-            }
         });
     });
 
     function ouvrirPrompt(nom) {
-        const mdp = prompt("Code secret pour " + nom + " :");
+        const mdp = prompt("Code secret :");
         if(mdp) socket.emit('join_group', { nom, mdp, estCreation: false, userUID: monUID });
     }
 
@@ -151,13 +149,12 @@
         const nom = document.getElementById('c-nom').value;
         const mdp = document.getElementById('c-mdp').value;
         const max = document.getElementById('c-max').value;
-        if(!nom || !mdp) return alert("Remplis tout !");
+        if(!nom || !mdp) return alert("Champs vides !");
         socket.emit('join_group', { nom, mdp, maxUsers: max, estCreation: true, userUID: monUID });
     }
 
     socket.on('bienvenue', (data) => {
-        currentSalon = data.nom;
-        monPseudoGlobal = data.monPseudo;
+        currentSalon = data.nom; monPseudoGlobal = data.monPseudo;
         messagesVus[currentSalon] = data.historique.length;
         localStorage.setItem('messages_vus', JSON.stringify(messagesVus));
         document.getElementById('auth-ui').style.display = 'none';
@@ -165,7 +162,6 @@
         document.getElementById('chat-screen').style.display = 'flex';
         document.getElementById('titre-chat').innerText = data.nom;
         document.getElementById('compteur-chat').innerText = `${data.nbMembres}/${data.max} membres`;
-        document.getElementById('admin-menu').style.display = (data.owner === monUID) ? "block" : "none";
         const box = document.getElementById('msg-box');
         box.innerHTML = "";
         data.historique.forEach(m => ajouterMsg(m));
@@ -183,44 +179,47 @@
         if(input.value.trim()) { socket.emit('envoi_message', input.value); input.value = ""; }
     }
 
-    socket.on('nouveau_message', m => {
-        if(currentSalon) {
-            ajouterMsg(m);
-            messagesVus[currentSalon]++;
-            localStorage.setItem('messages_vus', JSON.stringify(messagesVus));
-        }
-    });
+    socket.on('nouveau_message', m => { if(currentSalon) ajouterMsg(m); });
 
     function ajouterMsg(m) {
         const box = document.getElementById('msg-box');
-        const isMe = m.auteur === monPseudoGlobal;
         const div = document.createElement('div');
-        div.className = `msg ${isMe ? 'msg-me' : 'msg-them'}`;
-        const d = new Date(m.date || Date.now());
-        const heure = d.getHours().toString().padStart(2, '0') + ":" + d.getMinutes().toString().padStart(2, '0');
-        div.innerHTML = `<small style="display:flex; justify-content:space-between; font-size:0.7rem; opacity:0.6; margin-bottom:4px;">
-            <span>${m.auteur}</span><span style="margin-left:10px;">${heure}</span>
-        </small>${m.texte}`;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+        div.className = `msg ${m.auteur === monPseudoGlobal ? 'msg-me' : 'msg-them'}`;
+        div.innerHTML = `<small style="display:block; font-size:0.6rem; opacity:0.6;">${m.auteur}</small>${m.texte}`;
+        box.appendChild(div); box.scrollTop = box.scrollHeight;
     }
 
-    function supprimerSalon() {
-        if(confirm("🗑 Supprimer définitivement ce salon ?")) socket.emit('supprimer_salon', currentSalon);
+    // --- CONFIG DES BOUTONS PAYPAL ---
+    function initPayBtn(containerId, prix, itemType, quantite) {
+        paypal.Buttons({
+            style: { layout: 'horizontal', color: 'blue', shape: 'pill', label: 'pay', height: 40 },
+            createOrder: function(data, actions) {
+                return actions.order.create({
+                    purchase_units: [{
+                        amount: { value: prix },
+                        custom_id: JSON.stringify({ uid: monUID, item: itemType, qte: quantite })
+                    }]
+                });
+            },
+            onApprove: function(data, actions) {
+                return actions.order.capture().then(function(details) {
+                    alert('Achat réussi ! Tes crédits vont être mis à jour.');
+                    socket.emit('get_credits', monUID);
+                    toggleShop(false);
+                });
+            }
+        }).render(containerId);
     }
 
-    function lancerPaiement(prix, type, qte) {
-        toggleShop(false);
-        openKkiapayWidget({
-            amount: Math.round(prix * 655), position: "center",
-            data: JSON.stringify({ uid: monUID, type, qte }),
-            key: "TA_PUBLIC_KEY", sandbox: true 
-        });
-    }
+    // Initialisation de tous les boutons
+    initPayBtn('#paypal-salon-1', '0.49', 'salon', 1);
+    initPayBtn('#paypal-salon-5', '1.99', 'salon', 5);
+    initPayBtn('#paypal-salon-10', '2.99', 'salon', 10);
+    initPayBtn('#paypal-user-20', '0.99', 'user', 20);
+    initPayBtn('#paypal-user-50', '4.99', 'user', 50);
+    initPayBtn('#paypal-user-100', '8.99', 'user', 100);
 
-    socket.on('salon_supprime', () => { alert("Ce salon a été fermé."); location.reload(); });
     socket.on('erreur', alert);
-    addKkiapayListener('success', () => { location.reload(); });
 </script>
 </body>
 </html>
