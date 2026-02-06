@@ -16,7 +16,11 @@
         .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
         input { width: 100%; padding: 16px; margin: 10px 0; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(15, 23, 42, 0.6); color: white; font-size: 1rem; box-sizing: border-box; }
         .btn { background: var(--primary); color: white; border: none; padding: 16px; width: 100%; border-radius: 14px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
-        .salon-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 15px; margin-bottom: 10px; }
+        
+        /* STYLE DU SALON ET DU BADGE */
+        .salon-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 15px; margin-bottom: 10px; position: relative; }
+        .badge { background: #ff4757; color: white; font-size: 0.7rem; font-weight: bold; padding: 2px 8px; border-radius: 10px; margin-left: 8px; display: none; }
+        
         #shop-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; align-items: center; justify-content: center; }
         .shop-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #444; }
         #chat-screen { display: none; flex-direction: column; height: 100vh; position: fixed; top: 0; width: 100%; z-index: 1000; }
@@ -29,16 +33,10 @@
         .dropdown-content button { color: #ff4444; padding: 12px; background: none; border: none; width: 100%; text-align: left; cursor: pointer; font-weight: bold; }
         .dropdown:hover .dropdown-content { display: block; }
         
-        /* CORRECTION ICI : On remonte la barre pour qu'elle ne soit pas cachée */
         .input-bar-area { 
             padding: 15px; 
-            /* On force une marge en bas de 60px minimum pour dépasser la barre Android */
             padding-bottom: max(60px, env(safe-area-inset-bottom)); 
-            display: flex; 
-            gap: 10px; 
-            background: rgba(15, 23, 42, 0.95); 
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex; gap: 10px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.1); 
         }
     </style>
 </head>
@@ -83,7 +81,7 @@
 
 <div id="chat-screen" class="chat-bg">
     <header>
-        <button onclick="location.reload()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">✕</button>
+        <button onclick="fermerChat()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">✕</button>
         <div style="text-align:center;">
             <b id="titre-chat">Salon</b><br>
             <small id="compteur-chat" style="opacity:0.6; font-size:0.75rem;">0/0 membres</small>
@@ -108,8 +106,8 @@
     let currentSalon = "";
     let monPseudoGlobal = "";
 
-    // Même clé publique valide que le serveur
-    const vapidPublic = 'BJ9A5y1i7bT1P-8r6qV5m3xL4zJ2k8nQ9wR7s0tU1vW3xY5zA2bC4dE6fG8hJ0k';
+    // Mémoire des messages vus (Objet : { 'NomSalon': nombreDeMessages })
+    let messagesVus = JSON.parse(localStorage.getItem('messages_vus') || '{}');
 
     function switchMode(mode) {
         document.getElementById('section-rejoindre').style.display = (mode === 'rejoindre') ? 'block' : 'none';
@@ -131,11 +129,26 @@
         const container = document.getElementById('liste-salons');
         container.innerHTML = "<h4 style='opacity:0.6'>Salons Disponibles</h4>";
         salons.forEach(s => {
+            // Calcul du nombre de nouveaux messages
+            const dejaVus = messagesVus[s.nom] || 0;
+            const nouveau = s.totalMessages - dejaVus;
+            
+            // Si on est actuellement dans ce salon, on met à jour les vus immédiatement
+            if (currentSalon === s.nom) {
+                messagesVus[s.nom] = s.totalMessages;
+                localStorage.setItem('messages_vus', JSON.stringify(messagesVus));
+            }
+
             container.innerHTML += `
                 <div class="salon-item">
-                    <div><b>${s.nom}</b><br><small style="opacity:0.5">${s.membres}/${s.max} membres</small></div>
+                    <div>
+                        <b>${s.nom}</b>
+                        <span class="badge" id="badge-${s.nom}" style="display:${nouveau > 0 && currentSalon !== s.nom ? 'inline-block' : 'none'}">${nouveau}</span>
+                        <br><small style="opacity:0.5">${s.membres}/${s.max} membres</small>
+                    </div>
                     <button class="btn" style="width:auto; padding:8px 15px; font-size:0.9rem;" onclick="ouvrirPrompt('${s.nom}')">Entrer</button>
                 </div>`;
+            
             if(s.nom === currentSalon) {
                 document.getElementById('compteur-chat').innerText = `${s.membres}/${s.max} membres`;
             }
@@ -158,6 +171,11 @@
     socket.on('bienvenue', (data) => {
         currentSalon = data.nom;
         monPseudoGlobal = data.monPseudo;
+        
+        // Marquer tous les messages du salon comme vus
+        messagesVus[currentSalon] = data.historique.length;
+        localStorage.setItem('messages_vus', JSON.stringify(messagesVus));
+
         document.getElementById('auth-ui').style.display = 'none';
         document.getElementById('main-header').style.display = 'none';
         document.getElementById('chat-screen').style.display = 'flex';
@@ -169,12 +187,26 @@
         data.historique.forEach(m => ajouterMsg(m));
     });
 
+    function fermerChat() {
+        currentSalon = "";
+        document.getElementById('chat-screen').style.display = 'none';
+        document.getElementById('auth-ui').style.display = 'block';
+        document.getElementById('main-header').style.display = 'flex';
+    }
+
     function envoyer() {
         const input = document.getElementById('msg-input');
         if(input.value.trim()) { socket.emit('envoi_message', input.value); input.value = ""; }
     }
 
-    socket.on('nouveau_message', m => ajouterMsg(m));
+    socket.on('nouveau_message', m => {
+        if(currentSalon) {
+            ajouterMsg(m);
+            // On met à jour le compteur local si on est dans le salon
+            messagesVus[currentSalon]++;
+            localStorage.setItem('messages_vus', JSON.stringify(messagesVus));
+        }
+    });
 
     function ajouterMsg(m) {
         const box = document.getElementById('msg-box');
@@ -211,31 +243,6 @@
     socket.on('salon_supprime', () => { alert("Ce salon a été fermé."); location.reload(); });
     socket.on('erreur', alert);
     addKkiapayListener('success', () => { location.reload(); });
-
-    // --- LOGIQUE NOTIFICATIONS ---
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js').then(reg => {
-                Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') {
-                        reg.pushManager.subscribe({
-                            userVisibleOnly: true,
-                            applicationServerKey: urlBase64ToUint8Array(vapidPublic)
-                        }).then(sub => {
-                            socket.emit('subscribe_notifications', sub);
-                        });
-                    }
-                });
-            });
-        });
-    }
-
-    function urlBase64ToUint8Array(base64String) {
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-        const rawData = window.atob(base64);
-        return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-    }
 </script>
 </body>
 </html>
