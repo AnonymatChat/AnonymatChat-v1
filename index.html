@@ -16,11 +16,8 @@
         .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
         input { width: 100%; padding: 16px; margin: 10px 0; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(15, 23, 42, 0.6); color: white; font-size: 1rem; box-sizing: border-box; }
         .btn { background: var(--primary); color: white; border: none; padding: 16px; width: 100%; border-radius: 14px; font-weight: bold; font-size: 1.1rem; cursor: pointer; }
-        
-        /* STYLE DU SALON ET DU BADGE */
         .salon-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 15px; margin-bottom: 10px; position: relative; }
         .badge { background: #ff4757; color: white; font-size: 0.7rem; font-weight: bold; padding: 2px 8px; border-radius: 10px; margin-left: 8px; display: none; }
-        
         #shop-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; align-items: center; justify-content: center; }
         .shop-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #444; }
         #chat-screen { display: none; flex-direction: column; height: 100vh; position: fixed; top: 0; width: 100%; z-index: 1000; }
@@ -32,12 +29,7 @@
         .dropdown-content { display: none; position: absolute; right: 0; background: #1e293b; min-width: 140px; border-radius: 8px; z-index: 100; border: 1px solid #444; }
         .dropdown-content button { color: #ff4444; padding: 12px; background: none; border: none; width: 100%; text-align: left; cursor: pointer; font-weight: bold; }
         .dropdown:hover .dropdown-content { display: block; }
-        
-        .input-bar-area { 
-            padding: 15px; 
-            padding-bottom: max(60px, env(safe-area-inset-bottom)); 
-            display: flex; gap: 10px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.1); 
-        }
+        .input-bar-area { padding: 15px; padding-bottom: max(60px, env(safe-area-inset-bottom)); display: flex; gap: 10px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
 <body>
@@ -105,8 +97,6 @@
     localStorage.setItem('uid', monUID);
     let currentSalon = "";
     let monPseudoGlobal = "";
-
-    // Mémoire des messages vus (Objet : { 'NomSalon': nombreDeMessages })
     let messagesVus = JSON.parse(localStorage.getItem('messages_vus') || '{}');
 
     function switchMode(mode) {
@@ -129,28 +119,25 @@
         const container = document.getElementById('liste-salons');
         container.innerHTML = "<h4 style='opacity:0.6'>Salons Disponibles</h4>";
         salons.forEach(s => {
-            // Calcul du nombre de nouveaux messages
-            const dejaVus = messagesVus[s.nom] || 0;
-            const nouveau = s.totalMessages - dejaVus;
-            
-            // Si on est actuellement dans ce salon, on met à jour les vus immédiatement
-            if (currentSalon === s.nom) {
-                messagesVus[s.nom] = s.totalMessages;
-                localStorage.setItem('messages_vus', JSON.stringify(messagesVus));
+            // LOGIQUE INTELLIGENTE : On ne crée le badge que si l'utilisateur a déjà visité le salon une fois
+            let badgeHtml = "";
+            if (messagesVus.hasOwnProperty(s.nom)) {
+                const nouveau = s.totalMessages - messagesVus[s.nom];
+                if (nouveau > 0 && currentSalon !== s.nom) {
+                    badgeHtml = `<span class="badge" style="display:inline-block">${nouveau}</span>`;
+                }
             }
 
             container.innerHTML += `
                 <div class="salon-item">
-                    <div>
-                        <b>${s.nom}</b>
-                        <span class="badge" id="badge-${s.nom}" style="display:${nouveau > 0 && currentSalon !== s.nom ? 'inline-block' : 'none'}">${nouveau}</span>
-                        <br><small style="opacity:0.5">${s.membres}/${s.max} membres</small>
-                    </div>
+                    <div><b>${s.nom}</b>${badgeHtml}<br><small style="opacity:0.5">${s.membres}/${s.max} membres</small></div>
                     <button class="btn" style="width:auto; padding:8px 15px; font-size:0.9rem;" onclick="ouvrirPrompt('${s.nom}')">Entrer</button>
                 </div>`;
             
             if(s.nom === currentSalon) {
                 document.getElementById('compteur-chat').innerText = `${s.membres}/${s.max} membres`;
+                messagesVus[s.nom] = s.totalMessages;
+                localStorage.setItem('messages_vus', JSON.stringify(messagesVus));
             }
         });
     });
@@ -171,11 +158,8 @@
     socket.on('bienvenue', (data) => {
         currentSalon = data.nom;
         monPseudoGlobal = data.monPseudo;
-        
-        // Marquer tous les messages du salon comme vus
         messagesVus[currentSalon] = data.historique.length;
         localStorage.setItem('messages_vus', JSON.stringify(messagesVus));
-
         document.getElementById('auth-ui').style.display = 'none';
         document.getElementById('main-header').style.display = 'none';
         document.getElementById('chat-screen').style.display = 'flex';
@@ -202,7 +186,6 @@
     socket.on('nouveau_message', m => {
         if(currentSalon) {
             ajouterMsg(m);
-            // On met à jour le compteur local si on est dans le salon
             messagesVus[currentSalon]++;
             localStorage.setItem('messages_vus', JSON.stringify(messagesVus));
         }
@@ -216,27 +199,22 @@
         const d = new Date(m.date || Date.now());
         const heure = d.getHours().toString().padStart(2, '0') + ":" + d.getMinutes().toString().padStart(2, '0');
         div.innerHTML = `<small style="display:flex; justify-content:space-between; font-size:0.7rem; opacity:0.6; margin-bottom:4px;">
-            <span>${m.auteur}</span>
-            <span style="margin-left:10px;">${heure}</span>
+            <span>${m.auteur}</span><span style="margin-left:10px;">${heure}</span>
         </small>${m.texte}`;
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
     }
 
     function supprimerSalon() {
-        if(confirm("🗑 Supprimer définitivement ce salon ?")) {
-            socket.emit('supprimer_salon', currentSalon);
-        }
+        if(confirm("🗑 Supprimer définitivement ce salon ?")) socket.emit('supprimer_salon', currentSalon);
     }
 
     function lancerPaiement(prix, type, qte) {
         toggleShop(false);
         openKkiapayWidget({
-            amount: Math.round(prix * 655),
-            position: "center",
+            amount: Math.round(prix * 655), position: "center",
             data: JSON.stringify({ uid: monUID, type, qte }),
-            key: "TA_PUBLIC_KEY",
-            sandbox: true 
+            key: "TA_PUBLIC_KEY", sandbox: true 
         });
     }
 
