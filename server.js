@@ -2,123 +2,137 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const fs = require('fs');
-const axios = require('axios');
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// Sert les fichiers (index.html, images, etc.)
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// --- CONFIG PAYPAL ---
-const PAYPAL_CLIENT_ID = 'AQGOfxfUa8EjnGe01WnolvW78AS9HTJFZgsugBEudbggkiBuNr5M1Xo2GJ5EVYwB-fNyGmad0asygMOA';
-const PAYPAL_SECRET = 'ENIrSILX_PRGe6JtMO8ciNFehfzlNpYmqZW1mnacM09OIka9wOU5cA59lIJ65jGZgino1obgJ7Ijw9N2';
-const PAYPAL_API = 'https://api-m.sandbox.paypal.com'; // Change en 'api-m.paypal.com' pour le mode RÉEL
+// --- BASE DE DONNÉES (Sauvegarde les salons) ---
+let db = { groupes: {} };
 
-let db = { groupes: {}, inventaire: {} };
-if (fs.existsSync('database.json')) db = JSON.parse(fs.readFileSync('database.json'));
-
-function sauvegarder() { fs.writeFileSync('database.json', JSON.stringify(db, null, 2)); }
-
-// Fonction pour récupérer un jeton PayPal
-async function getPayPalToken() {
-    const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`).toString('base64');
-    const res = await axios.post(`${PAYPAL_API}/v1/oauth2/token`, 'grant_type=client_credentials', {
-        headers: { Authorization: `Basic ${auth}` }
-    });
-    return res.data.access_token;
+// Chargement de la sauvegarde si elle existe
+if (fs.existsSync('database.json')) {
+    try {
+        const data = fs.readFileSync('database.json');
+        db = JSON.parse(data);
+    } catch (e) {
+        console.log("Création d'une nouvelle base de données.");
+    }
 }
 
-// --- WEBHOOK PAYPAL ---
-app.post('/paypal-webhook', async (req, res) => {
-    const event = req.body;
-    // On écoute uniquement quand un paiement est capturé avec succès
-    if (event.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
-        const resource = event.resource;
-        const customData = JSON.parse(resource.custom_id || "{}"); // On récupère l'UID et le type d'achat
-        
-        if (customData.uid) {
-            if (!db.inventaire[customData.uid]) db.inventaire[customData.uid] = { salons: 1, users: 10 };
-            
-            // Logique d'ajout selon le montant ou la description
-            if (customData.item === 'salon') db.inventaire[customData.uid].salons += customData.qte;
-            if (customData.item === 'user') db.inventaire[customData.uid].users += customData.qte;
-            
-            sauvegarder();
-            console.log(`✅ Crédits ajoutés pour ${customData.uid}`);
-        }
-    }
-    res.sendStatus(200);
-});
+function sauvegarder() {
+    fs.writeFileSync('database.json', JSON.stringify(db, null, 2));
+}
 
+// Fonction pour envoyer la liste des salons à tout le monde
 function diffuserSalons() {
     const liste = Object.keys(db.groupes).map(nom => ({
-        nom, owner: db.groupes[nom].ownerUID,
+        nom, 
+        owner: db.groupes[nom].ownerUID,
         membres: Object.keys(db.groupes[nom].membres).length,
         max: db.groupes[nom].limiteUsers,
-        totalMessages: db.groupes[nom].messages.length
+        totalMessages: db.groupes[nom].messages.length // Sert pour les badges de notif
     }));
     io.emit('liste_salons', liste);
 }
 
 io.on('connection', (socket) => {
+    // Dès qu'on arrive, on reçoit la liste
     diffuserSalons();
 
-    socket.on('get_credits', (uid) => {
-        if (!db.inventaire[uid]) db.inventaire[uid] = { salons: 1, users: 10 };
-        socket.emit('update_credits', db.inventaire[uid]);
-    });
-
+    // --- REJOINDRE OU CRÉER UN GROUPE ---
     socket.on('join_group', (data) => {
         const { nom, mdp, maxUsers, estCreation, userUID } = data;
-        if (!db.inventaire[userUID]) db.inventaire[userUID] = { salons: 1, users: 10 };
-        const inv = db.inventaire[userUID];
-
+        socket.userUID = userUID; 
+        
+        // 1. CRÉATION
         if (estCreation) {
-            // Vérification du Pool
-            if (inv.salons < 1) return socket.emit('erreur', "Plus de crédit 'Salon' disponible.");
-            if (inv.users < maxUsers) return socket.emit('erreur', `Pas assez de crédit 'Utilisateurs' (${inv.users} restants).`);
+            // Si le nom existe déjà et appartient à quelqu'un d'autre
+            if (db.groupes[nom] && db.groupes[nom].ownerUID !== userUID) {
+                 return socket.emit('erreur', "Ce nom de salon est déjà pris par quelqu'un d'autre.");
+            }
 
+            // On crée ou on écrase (si c'est le même owner)
             db.groupes[nom] = { 
-                motDePasse: mdp, limiteUsers: parseInt(maxUsers), ownerUID: userUID, 
-                messages: [], membres: {}, dernierNumero: 0 
+                motDePasse: mdp, 
+                limiteUsers: parseInt(maxUsers) || 50, 
+                ownerUID: userUID, 
+                messages: [], 
+                membres: {}, 
+                dernierNumero: 0 
             };
-            
-            // Déduction du Pool
-            inv.salons -= 1;
-            inv.users -= maxUsers;
             sauvegarder();
-            socket.emit('update_credits', inv);
             diffuserSalons();
         }
 
+        // 2. VÉRIFICATIONS
         const g = db.groupes[nom];
-        if (!g || g.motDePasse !== mdp) return socket.emit('erreur', "Code incorrect.");
-        if (!g.membres[userUID] && Object.keys(g.membres).length >= g.limiteUsers) return socket.emit('erreur', "Salon complet.");
+        if (!g) return socket.emit('erreur', "Ce salon n'existe pas.");
+        if (g.motDePasse !== mdp) return socket.emit('erreur', "Code secret incorrect.");
+        
+        const nbActuel = Object.keys(g.membres).length;
+        if (!g.membres[userUID] && nbActuel >= g.limiteUsers) return socket.emit('erreur', "Le salon est complet.");
 
+        // 3. ENTRÉE DANS LE SALON
         socket.join(nom);
         socket.nomGroupe = nom;
+        
+        // Attribution d'un pseudo (Membre #01, #02...)
         if (!g.membres[userUID]) {
             g.dernierNumero++;
             g.membres[userUID] = g.dernierNumero;
             sauvegarder();
-            diffuserSalons();
+            diffuserSalons(); // Pour mettre à jour le compteur de membres
         }
-        socket.pseudo = "Membre #" + (g.membres[userUID] < 10 ? "0"+g.membres[userUID] : g.membres[userUID]);
-        socket.emit('bienvenue', { nom, historique: g.messages, monPseudo: socket.pseudo, owner: g.ownerUID, nbMembres: Object.keys(g.membres).length, max: g.limiteUsers });
+        
+        // Formatage du pseudo (ex: "Membre #05")
+        let num = g.membres[userUID];
+        socket.pseudo = "Membre #" + (num < 10 ? "0" + num : num);
+        
+        // Envoi des infos au client pour afficher le chat
+        socket.emit('bienvenue', { 
+            nom, 
+            historique: g.messages, 
+            monPseudo: socket.pseudo, 
+            owner: g.ownerUID, 
+            nbMembres: Object.keys(g.membres).length, 
+            max: g.limiteUsers 
+        });
     });
 
+    // --- SUPPRESSION DU SALON ---
+    socket.on('supprimer_salon', (nom) => {
+        // Seul le créateur peut supprimer
+        if (db.groupes[nom] && db.groupes[nom].ownerUID === socket.userUID) {
+            delete db.groupes[nom];
+            sauvegarder();
+            diffuserSalons();
+            io.to(nom).emit('salon_supprime'); // Prévient les gens dedans
+        }
+    });
+
+    // --- ENVOI DE MESSAGE ---
     socket.on('envoi_message', (txt) => {
         const g = db.groupes[socket.nomGroupe];
         if (g) {
             const m = { texte: txt, auteur: socket.pseudo, date: Date.now() };
             g.messages.push(m);
+            
+            // On garde seulement les 50 derniers messages pour ne pas surcharger la base
+            if(g.messages.length > 50) g.messages.shift();
+            
             sauvegarder();
             io.to(socket.nomGroupe).emit('nouveau_message', m);
-            diffuserSalons();
+            diffuserSalons(); // Pour les notifs de nouveaux messages
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Serveur PayPal prêt sur port ${PORT}`));
+server.listen(PORT, () => {
+    console.log(`🚀 Serveur AnonymatChat démarré sur le port ${PORT}`);
+});
