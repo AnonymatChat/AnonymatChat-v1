@@ -1,12 +1,11 @@
 {
-  "name": "AnonymatChat",
+  "name": "anonchat-pro",
   "version": "1.0.0",
-  "description": "Chat anonyme avec notifications",
+  "description": "Chat anonyme avec pastilles de messages vus",
   "main": "server.js",
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.7.2",
-    "web-push": "^3.6.6"
+    "socket.io": "^4.7.2"
   },
   "scripts": {
     "start": "node server.js"
